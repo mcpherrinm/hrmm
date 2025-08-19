@@ -4,12 +4,12 @@
 
 hrmm is a tool for watching a system's live state.
 
-The idea is that you configure a small-number of important dashboards that show your system's entire state that you may want to see in high-resolution.
-For example, your top-level HTTP API response volume, broken down by response code. Perhaps some key business metrics.
+The idea here is that some systems expose prometheus metrics, and you occasionally want to be able to poll/graph/view those metrics without any extra infrastructure.
 
-It polls configured prometheus metrics endpoints at a high rate (eg, every second) and live-streams the resulting metrics to all connected clients.
+hrmm can run as a webserver, polling and streaming results to clients. Results are stored in memory in a rolling buffer.
 
-A rolling in-memory buffer is kept to have some history, but only polls when clients are connected so its "idle" state doesn't use any resources.
+hrmm has a TUI to poll and display metrics directly too.
 
-It serves statically-configured dashboards, with no configurability or options at runtime.
-It has no dependency on databases or other storage, writes no data to disk, and comes with no auth provided.  
+It doesn't have any fancy aggregations, querying, alerting.  Leave that to prometheus.
+But sometimes you just want to look at some metrics without configuring prometheus.
+Or sometimes you want to see higher-frequency/live metrics, without increasing your prometheus polling interval.

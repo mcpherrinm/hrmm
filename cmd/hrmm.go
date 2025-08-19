@@ -1,7 +1,64 @@
-package main
+package cmd
 
-import "log/slog"
+import (
+	"fmt"
+	"time"
 
-func main() {
-	slog.Info("hello world")
+	"github.com/spf13/cobra"
+)
+
+var (
+	urls         []string
+	metrics      []string
+	jsonOutput   bool
+	pollInterval time.Duration
+)
+
+var RootCmd = &cobra.Command{
+	Use:   "hrmm",
+	Short: "High-Resolution Metrics Monitor",
+	Long:  "hrmm is a tool for watching a system's live state by polling prometheus metrics endpoints.",
+}
+
+var graphCmd = &cobra.Command{
+	Use:   "graph",
+	Short: "Display metrics in a graph/TUI format",
+	Long:  "Poll prometheus metrics endpoints and display the results in a graph or TUI format.",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Graph command called with URLs: %v, Metrics: %v\n", urls, metrics)
+		// TODO: Implement graph functionality
+	},
+}
+
+var serveCmd = &cobra.Command{
+	Use:   "serve",
+	Short: "Run as a webserver polling and streaming metrics",
+	Long:  "Run as a webserver, polling prometheus endpoints and streaming results to clients. Results are stored in memory in a rolling buffer.",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Serve command called with URLs: %v, Metrics: %v\n", urls, metrics)
+		// TODO: Implement serve functionality
+	},
+}
+
+var printCmd = &cobra.Command{
+	Use:   "print",
+	Short: "Fetch and print the specified URL and metric values",
+	Long:  "Fetch prometheus metrics from the specified URLs and print the metric values. Use --json flag for JSON output.",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Print command called with URLs: %v, Metrics: %v\n", urls, metrics)
+		// TODO: Implement print functionality
+	},
+}
+
+func init() {
+	RootCmd.PersistentFlags().StringSliceVarP(&urls, "url", "u", []string{}, "URL of a prometheus metrics endpoint (required, can be repeated)")
+	RootCmd.PersistentFlags().StringSliceVarP(&metrics, "metric", "m", []string{}, "Name of a prometheus timeseries metric to graph (optional, can be repeated)")
+	RootCmd.PersistentFlags().DurationVarP(&pollInterval, "poll-interval", "p", 10*time.Second, "Poll interval for metrics collection (e.g., 10s, 1m, 500ms)")
+	RootCmd.MarkPersistentFlagRequired("url")
+
+	printCmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Output in JSON format")
+
+	RootCmd.AddCommand(graphCmd)
+	RootCmd.AddCommand(serveCmd)
+	RootCmd.AddCommand(printCmd)
 }

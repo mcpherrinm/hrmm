@@ -38,14 +38,18 @@ type MetricData struct {
 	Help   string            `json:"help,omitempty"`
 	Type   string            `json:"type,omitempty"`
 	Labels map[string]string `json:"labels"`
-	Value  float64           `json:"value"`
 
-	// For HISTOGRAM metrics
-	SampleCount *uint64           `json:"sample_count,omitempty"`
-	SampleSum   *float64          `json:"sample_sum,omitempty"`
-	Buckets     []HistogramBucket `json:"buckets,omitempty"`
+	// For non-summary/histogram metrics:
+	Value float64 `json:"value"`
 
-	// For SUMMARY metrics
+	// For Summary and Histograms:
+	SampleCount *uint64  `json:"sample_count,omitempty"`
+	SampleSum   *float64 `json:"sample_sum,omitempty"`
+
+	// Histogram:
+	Buckets []HistogramBucket `json:"buckets,omitempty"`
+
+	// Summary:
 	Quantiles []SummaryQuantile `json:"quantiles,omitempty"`
 }
 

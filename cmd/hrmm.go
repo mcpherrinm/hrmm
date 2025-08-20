@@ -41,20 +41,10 @@ var serveCmd = &cobra.Command{
 	},
 }
 
-var printCmd = &cobra.Command{
-	Use:   "print",
-	Short: "Fetch and print the specified URL and metric values",
-	Long:  "Fetch prometheus metrics from the specified URLs and print the metric values. Use --json flag for JSON output.",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Print command called with URLs: %v, Metrics: %v\n", urls, metrics)
-		// TODO: Implement print functionality
-	},
-}
-
 func init() {
 	RootCmd.PersistentFlags().StringSliceVarP(&urls, "url", "u", []string{}, "URL of a prometheus metrics endpoint (required, can be repeated)")
 	RootCmd.PersistentFlags().StringSliceVarP(&metrics, "metric", "m", []string{}, "Select this prometheus metric name")
-	RootCmd.PersistentFlags().StringSliceVarP(&labels, "labels", "l", []string{}, "Select this Prometheus metric label")
+	RootCmd.PersistentFlags().StringSliceVarP(&labels, "label", "l", []string{}, "Select this Prometheus metric label")
 	RootCmd.PersistentFlags().DurationVarP(&pollInterval, "interval", "i", 10*time.Second, "Poll interval for metrics collection (e.g., 10s, 1m, 500ms)")
 	RootCmd.MarkPersistentFlagRequired("url")
 

@@ -66,6 +66,21 @@ type MetricData struct {
 	Quantiles []SummaryQuantile `json:"quantiles,omitempty"`
 }
 
+// String returns a single-line representation of this metric
+func (m MetricData) String() string {
+	var buf bytes.Buffer
+	switch strings.ToUpper(m.Type) {
+	case "HISTOGRAM":
+		return "TODO: Histogram\n"
+	case "SUMMARY":
+		return "TODO: Summary\n"
+	default:
+		// printSimple is already one line
+		m.printSimple(&buf)
+	}
+	return buf.String()
+}
+
 // Print writes the metric data to a buffer in Prometheus exposition format
 func (m MetricData) Print(buf *bytes.Buffer) {
 	switch strings.ToUpper(m.Type) {

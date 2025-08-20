@@ -2,7 +2,9 @@ package fetcher
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"slices"
 	"sort"
@@ -11,6 +13,17 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 )
+
+// NullableFloat64 is a wrapper around float64 that marshals NaN as null in JSON
+type NullableFloat64 float64
+
+// MarshalJSON implements the json.Marshaler interface
+func (nf NullableFloat64) MarshalJSON() ([]byte, error) {
+	if math.IsNaN(float64(nf)) {
+		return []byte("null"), nil
+	}
+	return json.Marshal(float64(nf))
+}
 
 // MetricsFetcher handles fetching and filtering Prometheus metrics
 type MetricsFetcher struct {
@@ -22,14 +35,14 @@ type MetricsFetcher struct {
 
 // HistogramBucket represents a histogram bucket with upper bound and cumulative count
 type HistogramBucket struct {
-	UpperBound      float64 `json:"upper_bound"`
-	CumulativeCount uint64  `json:"cumulative_count"`
+	UpperBound      NullableFloat64 `json:"upper_bound"`
+	CumulativeCount uint64          `json:"cumulative_count"`
 }
 
 // SummaryQuantile represents a summary quantile with quantile value and its value
 type SummaryQuantile struct {
-	Quantile float64 `json:"quantile"`
-	Value    float64 `json:"value"`
+	Quantile NullableFloat64 `json:"quantile"`
+	Value    NullableFloat64 `json:"value"`
 }
 
 // MetricData represents a filtered metric with its labels and value
@@ -40,11 +53,11 @@ type MetricData struct {
 	Labels map[string]string `json:"labels"`
 
 	// For non-summary/histogram metrics:
-	Value float64 `json:"value"`
+	Value NullableFloat64 `json:"value"`
 
 	// For Summary and Histograms:
-	SampleCount *uint64  `json:"sample_count,omitempty"`
-	SampleSum   *float64 `json:"sample_sum,omitempty"`
+	SampleCount *uint64          `json:"sample_count,omitempty"`
+	SampleSum   *NullableFloat64 `json:"sample_sum,omitempty"`
 
 	// Histogram:
 	Buckets []HistogramBucket `json:"buckets,omitempty"`
@@ -251,23 +264,23 @@ func (mf *MetricsFetcher) Fetch() ([]MetricData, error) {
 			switch family.GetType() {
 			case dto.MetricType_COUNTER:
 				if metric.Counter != nil {
-					metricData.Value = metric.Counter.GetValue()
+					metricData.Value = NullableFloat64(metric.Counter.GetValue())
 				}
 			case dto.MetricType_GAUGE:
 				if metric.Gauge != nil {
-					metricData.Value = metric.Gauge.GetValue()
+					metricData.Value = NullableFloat64(metric.Gauge.GetValue())
 				}
 			case dto.MetricType_HISTOGRAM:
 				if metric.Histogram != nil {
 					sampleCount := metric.Histogram.GetSampleCount()
-					sampleSum := metric.Histogram.GetSampleSum()
+					sampleSum := NullableFloat64(metric.Histogram.GetSampleSum())
 					metricData.SampleCount = &sampleCount
 					metricData.SampleSum = &sampleSum
 
 					// Extract buckets
 					for _, bucket := range metric.Histogram.GetBucket() {
 						metricData.Buckets = append(metricData.Buckets, HistogramBucket{
-							UpperBound:      bucket.GetUpperBound(),
+							UpperBound:      NullableFloat64(bucket.GetUpperBound()),
 							CumulativeCount: bucket.GetCumulativeCount(),
 						})
 					}
@@ -275,20 +288,20 @@ func (mf *MetricsFetcher) Fetch() ([]MetricData, error) {
 			case dto.MetricType_SUMMARY:
 				if metric.Summary != nil {
 					sampleCount := metric.Summary.GetSampleCount()
-					sampleSum := metric.Summary.GetSampleSum()
+					sampleSum := NullableFloat64(metric.Summary.GetSampleSum())
 					metricData.SampleCount = &sampleCount
 					metricData.SampleSum = &sampleSum
 
 					for _, quantile := range metric.Summary.GetQuantile() {
 						metricData.Quantiles = append(metricData.Quantiles, SummaryQuantile{
-							Quantile: quantile.GetQuantile(),
-							Value:    quantile.GetValue(),
+							Quantile: NullableFloat64(quantile.GetQuantile()),
+							Value:    NullableFloat64(quantile.GetValue()),
 						})
 					}
 				}
 			case dto.MetricType_UNTYPED:
 				if metric.Untyped != nil {
-					metricData.Value = metric.Untyped.GetValue()
+					metricData.Value = NullableFloat64(metric.Untyped.GetValue())
 				}
 			}
 

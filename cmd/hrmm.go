@@ -21,16 +21,6 @@ var RootCmd = &cobra.Command{
 	Long:  "hrmm is a tool for watching a system's live state by polling prometheus metrics endpoints.",
 }
 
-var graphCmd = &cobra.Command{
-	Use:   "graph",
-	Short: "Display metrics in a graph/TUI format",
-	Long:  "Poll prometheus metrics endpoints and display the results in a graph or TUI format.",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Graph command called with URLs: %v, Metrics: %v\n", urls, metrics)
-		// TODO: Implement graph functionality
-	},
-}
-
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Run as a webserver polling and streaming metrics",

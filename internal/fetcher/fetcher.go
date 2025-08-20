@@ -79,19 +79,26 @@ func (m MetricData) Print(buf *bytes.Buffer) {
 	}
 }
 
-// printSimple prints counter, gauge, and untyped metrics to buffer
-func (m MetricData) printSimple(buf *bytes.Buffer) {
+// Identifier is the metric name and labels
+func (m MetricData) Identifier() string {
+	r := strings.Builder{}
+	r.WriteString(m.Name)
 	if len(m.Labels) > 0 {
-		// Format labels as {key="value",key2="value2"}
 		var labelPairs []string
 		for key, value := range m.Labels {
 			labelPairs = append(labelPairs, fmt.Sprintf(`%s="%s"`, key, value))
 		}
 		sort.Strings(labelPairs) // Sort for consistent output
-		fmt.Fprintf(buf, "%s{%s} %g\n", m.Name, strings.Join(labelPairs, ","), m.Value)
-	} else {
-		fmt.Fprintf(buf, "%s %g\n", m.Name, m.Value)
+		r.WriteRune('{')
+		r.WriteString(strings.Join(labelPairs, ","))
+		r.WriteRune('}')
 	}
+	return r.String()
+}
+
+// printSimple prints counter, gauge, and untyped metrics to buffer
+func (m MetricData) printSimple(buf *bytes.Buffer) {
+	fmt.Fprintf(buf, "%s %g\n", m.Identifier(), m.Value)
 }
 
 // printHistogram prints histogram metrics with buckets, sum, and count to buffer

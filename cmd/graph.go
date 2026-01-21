@@ -12,8 +12,9 @@ import (
 
 // metricItem implements list.Item for MetricData
 type metricItem struct {
-	metric   fetcher.MetricData
-	selected bool
+	metric      fetcher.MetricData
+	selected    bool
+	originalIdx int // Index in the unfiltered list
 }
 
 func (i metricItem) FilterValue() string { return i.metric.Identifier() }
@@ -30,8 +31,9 @@ func (i metricItem) Description() string {
 
 // metricSelectionModel represents the metric selection screen using bubbles/list
 type metricSelectionModel struct {
-	list list.Model
-	err  error
+	list     list.Model
+	allItems []metricItem // All items with selection state (not affected by filtering)
+	err      error
 }
 
 func (m *metricSelectionModel) Init() tea.Cmd {
@@ -45,21 +47,55 @@ func (m *metricSelectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list.SetWidth(msg.Width)
 		m.list.SetHeight(msg.Height - 2) // Leave space for title and padding
 	case tea.KeyMsg:
+		// Don't intercept keys when filtering (except ctrl+c)
+		if m.list.FilterState() == list.Filtering {
+			if msg.String() == "ctrl+c" {
+				return m, tea.Quit
+			}
+			// Let all other keys go to the filter input
+			var cmd tea.Cmd
+			m.list, cmd = m.list.Update(msg)
+			return m, cmd
+		}
+
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case " ":
-			// Toggle selection
+			// Toggle selection using original index
 			if selectedItem, ok := m.list.SelectedItem().(metricItem); ok {
 				selectedItem.selected = !selectedItem.selected
-				m.list.SetItem(m.list.Index(), selectedItem)
+				// Update in allItems (source of truth)
+				m.allItems[selectedItem.originalIdx] = selectedItem
+
+				// Rebuild list items to ensure UI reflects changes
+				// When filtered, the list maintains copies of items, so SetItem
+				// on the underlying array doesn't update the filtered view
+				filterValue := m.list.FilterValue()
+				filterState := m.list.FilterState()
+				cursorIdx := m.list.Index()
+
+				items := make([]list.Item, len(m.allItems))
+				for i, item := range m.allItems {
+					items[i] = item
+				}
+				m.list.SetItems(items)
+
+				// Restore filter state if filtering was active
+				if filterState == list.FilterApplied && filterValue != "" {
+					m.list.SetFilterText(filterValue)
+					m.list.SetFilterState(list.FilterApplied)
+					// Restore cursor position within filtered results
+					m.list.Select(cursorIdx)
+				}
 			}
 		case "enter":
 			// Proceed to graph view with selected metrics
+			// Use allItems to get ALL selected items, not just filtered ones
 			var selectedMetrics []string
-			for _, item := range m.list.Items() {
-				if metricItem, ok := item.(metricItem); ok && metricItem.selected {
-					selectedMetrics = append(selectedMetrics, metricItem.metric.Name)
+			for _, item := range m.allItems {
+				if item.selected {
+					selectedMetrics = append(selectedMetrics, item.metric.Name)
 				}
 			}
 			if len(selectedMetrics) > 0 {
@@ -136,13 +172,17 @@ var graphCmd = &cobra.Command{
 			return
 		}
 
-		// Convert metrics to list items
+		// Convert metrics to list items with original indices
 		items := make([]list.Item, len(allMetrics))
+		allItems := make([]metricItem, len(allMetrics))
 		for i, metric := range allMetrics {
-			items[i] = metricItem{
-				metric:   metric,
-				selected: false,
+			item := metricItem{
+				metric:      metric,
+				selected:    false,
+				originalIdx: i,
 			}
+			items[i] = item
+			allItems[i] = item
 		}
 
 		l := list.New(items, list.NewDefaultDelegate(), 80, 25)
@@ -152,7 +192,8 @@ var graphCmd = &cobra.Command{
 		l.Styles.Title = l.Styles.Title.Foreground(list.DefaultStyles().Title.GetForeground())
 
 		p := tea.NewProgram(&metricSelectionModel{
-			list: l,
+			list:     l,
+			allItems: allItems,
 		}, tea.WithAltScreen())
 
 		if _, err := p.Run(); err != nil {
